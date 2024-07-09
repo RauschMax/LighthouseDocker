@@ -1,0 +1,94 @@
+# Use Ubuntu 18.04 as the base image
+FROM ubuntu:18.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MYSQL_ROOT_PASSWORD=Jt535$RMJ@x5
+ENV MYSQL_DATABASE=SawtoothDB1
+ENV MYSQL_USER=SawtoothUser
+ENV MYSQL_PASSWORD=Jt535$RMJ@x5
+
+# Update and install necessary packages
+RUN apt-get update && \
+    apt-get install -y \
+    nginx \
+    mysql-server-5.7 \
+    perl \
+    libdbi-perl \
+    libdbd-mysql-perl \
+    libjson-pp-perl \
+    libdatetime-perl \
+    openssh-server \
+    ftp \
+    vsftpd \
+    curl \
+    vim
+
+# Configure MySQL
+RUN service mysql start && \
+    mysql -u root -e "CREATE DATABASE ${MYSQL_DATABASE};" && \
+    mysql -u root -e "CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';" && \
+    mysql -u root -e "GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION;" && \
+    mysql -u root -e "FLUSH PRIVILEGES;"
+
+# Configure NGINX
+RUN rm /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Set up SSH and fix duplicate Subsystem entry
+RUN mkdir /var/run/sshd && \
+    echo 'root:password' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+	
+	
+# Copy your vsftpd.conf file into the container
+COPY vsftpd.conf /etc/vsftpd.conf
+
+
+# Replace 'ftpuser' and 'ftppassword' with your desired username and password
+RUN useradd -m ftpuser && \
+    echo "ftpuser:v90F\M6^r(jI" | chpasswd
+
+
+# Create directories and set permissions
+RUN mkdir -p /var/www/html && \
+    mkdir -p /var/www/html/admin && \
+    mkdir -p /var/www/html/admin/db_setup && \
+    mkdir -p /var/www/cgi-bin && \
+    mkdir -p /var/www/graphics && \
+    touch /var/www/html/login.html && \
+    touch /var/www/html/admin.html && \
+    touch /var/www/html/admin/_ssi.cgi && \
+    touch /var/www/html/admin/_config.cgi && \
+    touch /var/www/html/admin/db_setup/_questionnaire.cgi && \
+    touch /var/www/cgi-bin/admin.pl && \
+    touch /var/www/cgi-bin/ciwweb.pl && \
+    chmod 644 /var/www/html/login.html && \
+    chmod 644 /var/www/html/admin.html && \
+    chmod 703 /var/www/html/admin && \
+    chmod 755 /var/www/html/admin/_ssi.cgi && \
+    chmod 755 /var/www/html/admin/_config.cgi && \
+    chmod 707 /var/www/html/admin/db_setup && \
+    chmod 755 /var/www/html/admin/db_setup/_questionnaire.cgi && \
+    chmod 705 /var/www/cgi-bin && \
+    chmod 755 /var/www/cgi-bin/admin.pl && \
+    chmod 755 /var/www/cgi-bin/ciwweb.pl && \
+    chmod 707 /var/www/graphics && \
+    find /var/www/graphics -type d -exec chmod 707 {} +
+
+# Copy NGINX config file
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose ports
+EXPOSE 80 22 3306 
+EXPOSE 20 21 30000-31000
+
+# Start services (MySQL, SSH, NGINX, vsftpd) and keep container running
+CMD service mysql start && \
+    service ssh start && \
+    service nginx start && \
+    service vsftpd start && \
+    tail -f /dev/null

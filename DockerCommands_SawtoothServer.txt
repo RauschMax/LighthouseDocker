@@ -1,0 +1,60 @@
+# Build Docker Container with "Dockerfile_SawtoothServer
+docker build -t survey-server -f Dockerfile_SawtoothServer .
+
+
+# RUN Docker Container
+docker run -d -p 80:80 -p 21:21 -p 3306:3306 -p 10000-10100:10000-10100 --name survey-server survey-server
+docker run -d -p 80:80 -p 21:21 -p 3306:3306 -p 10000-10100:10000-10100 -v /path/on/host:/home/ftpuser/ftp/upload --name survey-server survey-server
+
+# Display Docker logs
+docker logs survey-server
+
+# Acess Docker with bash
+docker exec -it survey-server bash
+
+# CHECK status of server and SQL
+service nginx status
+service mysql status
+service ssh status
+
+ls -l /var/www/html
+ls -l /var/www/cgi-bin
+ls -l /var/www/graphics
+
+# Access FTP to see if it is running
+ftp localhost
+
+
+# ACESSS MYSQL Database 
+Jt535RMJx5
+mysql -h localhost -u SawtoothUser -pJt535RMJx5 -D SawtoothDB1
+
+# !!! mysql !!! - show bind-address for access
+SHOW VARIABLES LIKE 'bind_address';
+
+
+# CHECK if PERL Modules are installed properly
+RUN echo '#!/usr/bin/perl\nuse strict;\nuse warnings;\nmy @modules = ("DBI", "DBD::mysql", "JSON::PP", "DateTime");\nforeach my $module (@modules) \
+	{\n    eval "use $module";\n    if ($@) {\n        print "Module $module is not installed properly\\n";\n        exit 1;\n    } else \
+	{\n        print "Module $module is installed properly\\n";\n    }\n}' > /usr/local/bin/check_perl_modules.pl && \
+    chmod +x /usr/local/bin/check_perl_modules.pl
+
+# Run the script to verify Perl modules
+RUN /usr/local/bin/check_perl_modules.pl
+
+
+# APACHE SERVER
+docker build -t survey-apache -f Dockerfile_SawtoothServer_Apache .
+docker run -d -p 80:80 -p 21:21 -p 3306:3306 -p 10000-10100:10000-10100 -v /path/on/host:/home/ftpuser/ftp/upload --name survey-apache survey-apache
+docker exec -it survey-apache bash
+
+apachectl -M
+
+docker logs survey-apache
+
+
+
+docker tag survey-apache maxrausch/survey-apache:latest
+docker push maxrausch/survey-apache:latest
+
+docker run -d -p 80:80 -p 21:21 -p 3306:3306 -p 10000-10100:10000-10100 -v /path/on/host:/home/ftpuser/ftp/upload --name maxrausch/survey-apache:latest
