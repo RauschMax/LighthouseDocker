@@ -1,0 +1,3 @@
+# my-custom.cnf
+[mysqld]
+bind-address = 0.0.0.0
